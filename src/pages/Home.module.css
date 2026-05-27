@@ -1,0 +1,211 @@
+.page {
+    min-height: 100vh;
+    background: #faf5ef;
+    font-family: 'Georgia', 'Times New Roman', serif;
+    display: flex;
+    flex-direction: column;
+}
+
+.navbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 48px;
+    background: #faf5ef;
+    border-bottom: 1px solid #e8ddd0;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.logoText {
+    font-size: 22px;
+    font-weight: 700;
+    color: #4a2e1a;
+    font-family: 'Georgia', serif;
+}
+
+.navLinks {
+    display: flex;
+    gap: 32px;
+}
+
+.navLink {
+    background: none;
+    border: none;
+    font-size: 15px;
+    cursor: pointer;
+    padding: 4px 0;
+    transition: color 0.2s;
+    font-family: inherit;
+}
+
+.navLinkActive {
+    color: #7a4a2a;
+    font-weight: 600;
+}
+
+.userArea {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.userName {
+    font-size: 15px;
+    color: #5a3a2a;
+    font-weight: 500;
+}
+
+.gradeBadge {
+    background: #7a4a2a;
+    color: #fff;
+    border-radius: 20px;
+    padding: 3px 12px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.avatarCircle {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #f0e8dc;
+    border: 2px solid #c8926a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.main {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 60px 80px;
+    flex: 1 1 auto;
+    gap: 40px;
+}
+
+.leftPanel {
+    flex: 0 0 auto;
+    max-width: 380px;
+}
+
+.headline {
+    font-size: 52px;
+    font-weight: 800;
+    color: #4a2e1a;
+    line-height: 1.15;
+    margin-bottom: 40px;
+    font-family: 'Georgia', serif;
+}
+
+.buttonGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    max-width: 300px;
+}
+
+.primaryBtn {
+    background: #7a4a2a;
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    padding: 16px 32px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.2s, transform 0.1s;
+}
+
+.secondaryBtn {
+    background: #faf5ef;
+    color: #4a2e1a;
+    border: 2px solid #c8926a;
+    border-radius: 12px;
+    padding: 14px 32px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+
+.cardGrid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    flex: 0 0 auto;
+}
+
+.card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 20px 22px;
+    width: 200px;
+    box-shadow: 10px 10px 0px #c8926a;
+    border: 1.5px solid #e8d8c8;
+    transition: transform 0.2s, box-shadow 0.2s;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.card:hover {
+    transform: translateY(-3px);
+    box-shadow: 8px 8px 0px #b07850;
+}
+
+.cardIcon {
+    margin-bottom: 2px;
+}
+
+.cardTitle {
+    font-size: 15px;
+    font-weight: 700;
+    color: #4a2e1a;
+    margin: 0;
+    line-height: 1.35;
+    font-family: inherit;
+}
+
+.cardFooter {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.cardDate {
+    font-size: 12px;
+    color: #9a8070;
+}
+
+.dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.dotDone {
+    background: #4caf82;
+}
+
+.dotPending {
+    background: #f0b942;
+}
+
+.cameraIcon {
+    margin-right: 8px;
+}
