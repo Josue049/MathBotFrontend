@@ -1,9 +1,10 @@
 import styles from "./Home.module.css";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ChatHeader from "../components/ChatHeader";
 import chatService from "../services/chatService";
 import { getStoredUser } from "../services/authService";
+import { uploadExerciseImage } from "../services/visionService";
 
 function formatDate(isoDate) {
   const d = new Date(isoDate);
@@ -19,6 +20,9 @@ export default function Home() {
   const navigate = useNavigate();
   const user = getStoredUser();
   const [topics, setTopics] = useState([]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     async function loadHistory() {
@@ -43,6 +47,32 @@ export default function Home() {
 
     loadHistory();
   }, [user?.id]);
+
+  async function handlePhotoSelected(event) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    if (!user?.id) {
+      navigate("/access?intent=login");
+      return;
+    }
+
+    setUploading(true);
+    setUploadError("");
+    try {
+      const res = await uploadExerciseImage({ userId: user.id, file });
+      const conversationId = res?.conversationId;
+      if (!res?.ok || !conversationId) {
+        throw new Error(res?.reply || "No se pudo analizar la foto.");
+      }
+      navigate(`/chat?conversationId=${conversationId}&mode=vision`);
+    } catch (err) {
+      setUploadError(err?.message || "No se pudo subir la foto.");
+    } finally {
+      setUploading(false);
+    }
+  }
 
   return (
     <div className={styles.page}>
@@ -71,11 +101,34 @@ export default function Home() {
             >
               Ver historial completo
             </button>
-            <button className={styles.secondaryBtn}>
+            <button
+              className={styles.secondaryBtn}
+              onClick={() => {
+                if (!user?.id) {
+                  navigate("/access?intent=login");
+                  return;
+                }
+                fileInputRef.current?.click();
+              }}
+              disabled={uploading}
+            >
               <CameraIcon />
-              Subir foto de ejercicio
+              {uploading ? "Analizando foto..." : "Subir foto de ejercicio"}
             </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              style={{ display: "none" }}
+              onChange={handlePhotoSelected}
+            />
           </div>
+          {uploadError ? (
+            <p className={styles.cardDate} style={{ color: "#a3302d", marginTop: 12 }}>
+              {uploadError}
+            </p>
+          ) : null}
         </div>
 
         {/* Right panel: topic cards */}

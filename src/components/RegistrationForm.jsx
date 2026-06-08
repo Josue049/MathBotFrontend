@@ -83,9 +83,11 @@ export default function RegistrationForm({ role }) {
     () =>
       isTeacher
         ? "Crea tu cuenta como profesor y administra a tus estudiantes"
-        : "Crea tu cuenta como estudiante y elige a tu profesor dentro de tu institución",
+        : "Crea tu cuenta como estudiante. La institución y el profesor son opcionales.",
     [isTeacher],
   );
+
+  const hasInstitution = form.institution.trim().length > 0;
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -102,15 +104,6 @@ export default function RegistrationForm({ role }) {
         setStatus({
           type: "error",
           message: "Debes ingresar tu nombre.",
-        });
-        setLoading(false);
-        return;
-      }
-
-      if (!form.institution.trim()) {
-        setStatus({
-          type: "error",
-          message: "Debes ingresar tu institución.",
         });
         setLoading(false);
         return;
@@ -143,10 +136,10 @@ export default function RegistrationForm({ role }) {
         return;
       }
 
-      if (!isTeacher && !form.teacherId) {
+      if (!isTeacher && hasInstitution && !form.teacherId) {
         setStatus({
           type: "error",
-          message: "Debes elegir un profesor de tu institución.",
+          message: "Si indicas una institución, debes elegir un profesor.",
         });
         setLoading(false);
         return;
@@ -182,7 +175,8 @@ export default function RegistrationForm({ role }) {
         edad: isTeacher ? 30 : Number(form.edad),
         grado: isTeacher ? "Profesor" : form.grado,
         role: isTeacher ? "ROLE_TEACHER" : "ROLE_STUDENT",
-        teacherId: isTeacher ? null : Number(form.teacherId),
+        institution: form.institution.trim() || null,
+        teacherId: isTeacher || !hasInstitution ? null : Number(form.teacherId),
       };
 
       await registerUser(payload);
@@ -432,18 +426,27 @@ export default function RegistrationForm({ role }) {
           ) : null}
 
           <div style={styles.field}>
-            <label style={styles.label}>Institución</label>
+            <label style={styles.label}>Institución (opcional)</label>
             <input
               style={styles.input}
               name="institution"
               value={form.institution}
-              onChange={handleChange}
-              placeholder="Nombre de la escuela o institución"
-              required
+              onChange={(e) => {
+                handleChange(e);
+                if (!e.target.value.trim()) {
+                  setForm((prev) => ({ ...prev, teacherId: "" }));
+                }
+              }}
+              placeholder="Nombre de la escuela (opcional)"
             />
+            {!isTeacher ? (
+              <div style={styles.helper}>
+                Si perteneces a una escuela, escríbela y elige a tu profesor.
+              </div>
+            ) : null}
           </div>
 
-          {!isTeacher ? (
+          {!isTeacher && hasInstitution ? (
             <div style={styles.field}>
               <label style={styles.label}>Tu profesor</label>
               <select
@@ -451,7 +454,8 @@ export default function RegistrationForm({ role }) {
                 name="teacherId"
                 value={form.teacherId}
                 onChange={handleChange}
-                disabled={!form.institution.trim() || loadingTeachers}
+                disabled={loadingTeachers}
+                required
               >
                 <option value="">
                   {loadingTeachers
@@ -465,8 +469,12 @@ export default function RegistrationForm({ role }) {
                 ))}
               </select>
               <div style={styles.helper}>
-                Escribe tu institución para ver los profesores disponibles.
+                Obligatorio cuando indicas una institución.
               </div>
+            </div>
+          ) : !isTeacher ? (
+            <div style={styles.helper}>
+              Puedes registrarte sin escuela y usar MathBot de forma independiente.
             </div>
           ) : (
             <div style={styles.helper}>

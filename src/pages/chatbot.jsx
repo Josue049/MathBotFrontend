@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import chatService from "../services/chatService";
 import { getStoredUser } from "../services/authService";
+import { uploadExerciseImage } from "../services/visionService";
 import styles from "./chatbot.module.css";
 import ChatHeader from "../components/ChatHeader";
 
@@ -71,6 +72,18 @@ function Message({ msg }) {
       <div
         className={`${styles.bubble} ${isUser ? styles.bubbleUser : styles.bubbleAssistant}`}
       >
+        {msg.imageUrl ? (
+          <img
+            src={msg.imageUrl}
+            alt="Ejercicio subido"
+            style={{
+              maxWidth: "100%",
+              borderRadius: 12,
+              marginBottom: 8,
+              display: "block",
+            }}
+          />
+        ) : null}
         {msg.typing ? <TypingDots /> : formatText(msg.content)}
       </div>
     </div>
@@ -93,8 +106,10 @@ export default function ChatBot() {
   const [loading, setLoading] = useState(false);
   const [loadingConversation, setLoadingConversation] = useState(false);
   const [showQuick, setShowQuick] = useState(true);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
+  const photoInputRef = useRef(null);
 
   useEffect(() => {
     async function loadConversationFromQuery() {
@@ -247,6 +262,71 @@ export default function ChatBot() {
     sendMessage(text);
   }
 
+  async function handlePhotoSelected(event) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || uploadingImage || loading) return;
+
+    const activeUserId = Number(currentUser?.id);
+    if (!activeUserId) {
+      navigate("/login");
+      return;
+    }
+
+    setShowQuick(false);
+    setUploadingImage(true);
+    setMessages((prev) => [
+      ...prev,
+      {
+        role: "user",
+        content: "Subí una foto de mi ejercicio.",
+        imageUrl: URL.createObjectURL(file),
+      },
+      { role: "assistant", content: "", typing: true },
+    ]);
+
+    try {
+      const res = await uploadExerciseImage({
+        userId: activeUserId,
+        conversationId,
+        file,
+      });
+
+      if (!res?.ok) {
+        throw new Error(res?.reply || "No se pudo analizar la imagen.");
+      }
+
+      if (res.conversationId) {
+        setConversationId(Number(res.conversationId));
+      }
+
+      const reply = res.reply || "Listo, revisé tu ejercicio.";
+      setMessages((prev) => {
+        const updated = [...prev];
+        const userIndex = updated.length - 2;
+        if (userIndex >= 0 && res.imageUrl) {
+          updated[userIndex] = {
+            ...updated[userIndex],
+            imageUrl: res.imageUrl,
+          };
+        }
+        updated[updated.length - 1] = { role: "assistant", content: reply };
+        return updated;
+      });
+    } catch (err) {
+      setMessages((prev) => {
+        const updated = [...prev];
+        updated[updated.length - 1] = {
+          role: "assistant",
+          content: `⚠️ No pude analizar la foto. ${err?.message || ""}`,
+        };
+        return updated;
+      });
+    } finally {
+      setUploadingImage(false);
+    }
+  }
+
   return (
     <div className={styles.chatbot}>
       <ChatHeader user={currentUser} />
@@ -279,6 +359,24 @@ export default function ChatBot() {
           )}
 
           <div className={styles.inputBar}>
+            <button
+              type="button"
+              className={styles.sendBtn}
+              style={{ background: "#8b5a3c", marginRight: 8 }}
+              onClick={() => photoInputRef.current?.click()}
+              disabled={loading || loadingConversation || uploadingImage}
+              title="Subir foto de ejercicio"
+            >
+              📷
+            </button>
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              style={{ display: "none" }}
+              onChange={handlePhotoSelected}
+            />
             <input
               ref={inputRef}
               className={styles.textInput}
@@ -289,12 +387,14 @@ export default function ChatBot() {
               }
               placeholder="Escribe tu pregunta..."
               maxLength={300}
-              disabled={loading}
+              disabled={loading || uploadingImage}
             />
             <button
               className={styles.sendBtn}
               onClick={handleSend}
-              disabled={loading || loadingConversation || !input.trim()}
+              disabled={
+                loading || loadingConversation || uploadingImage || !input.trim()
+              }
             >
               <svg
                 width="18"
