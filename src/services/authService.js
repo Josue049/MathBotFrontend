@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8080';
+const API_BASE = import.meta.env.VITE_API_BASE || 'https://mathbotbackendspringboot.onrender.com/';
 
 function storeSession(data) {
     if (typeof window === 'undefined' || !data?.token) {
