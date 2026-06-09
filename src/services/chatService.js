@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_BASE || 'https://mathbotbackendspringboot.onrender.com';
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8080';
 
 function getAuthToken() {
   return localStorage.getItem('mathbot_token') || '';

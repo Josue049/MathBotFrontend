@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   registerUser,
   getTeachersByInstitution,
+  getClassroomsByTeacher,
 } from "../services/authService";
 import { AVATARS } from "../constants/avatars";
 
@@ -29,6 +30,7 @@ export default function RegistrationForm({ role }) {
     grado: "",
     institution: "",
     teacherId: "",
+    classroomId: "",
     correo: "",
     telefono: "",
     usuario: "",
@@ -36,7 +38,9 @@ export default function RegistrationForm({ role }) {
     avatar: "",
   });
   const [teachers, setTeachers] = useState([]);
+  const [classrooms, setClassrooms] = useState([]);
   const [loadingTeachers, setLoadingTeachers] = useState(false);
+  const [loadingClassrooms, setLoadingClassrooms] = useState(false);
   const [status, setStatus] = useState({ type: "", message: "" });
   const [loading, setLoading] = useState(false);
 
@@ -73,6 +77,38 @@ export default function RegistrationForm({ role }) {
       clearTimeout(timer);
     };
   }, [form.institution, isTeacher]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadClassrooms() {
+      if (isTeacher || !form.teacherId) {
+        setClassrooms([]);
+        return;
+      }
+
+      setLoadingClassrooms(true);
+      try {
+        const data = await getClassroomsByTeacher(Number(form.teacherId));
+        if (!cancelled) {
+          setClassrooms(Array.isArray(data) ? data : []);
+        }
+      } catch {
+        if (!cancelled) {
+          setClassrooms([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingClassrooms(false);
+        }
+      }
+    }
+
+    loadClassrooms();
+    return () => {
+      cancelled = true;
+    };
+  }, [form.teacherId, isTeacher]);
 
   const title = useMemo(
     () => (isTeacher ? "Registro de profesor" : "Registro de estudiante"),
@@ -177,6 +213,10 @@ export default function RegistrationForm({ role }) {
         role: isTeacher ? "ROLE_TEACHER" : "ROLE_STUDENT",
         institution: form.institution.trim() || null,
         teacherId: isTeacher || !hasInstitution ? null : Number(form.teacherId),
+        classroomId:
+          isTeacher || !hasInstitution || !form.classroomId
+            ? null
+            : Number(form.classroomId),
       };
 
       await registerUser(payload);
@@ -419,12 +459,6 @@ export default function RegistrationForm({ role }) {
             </>
           )}
 
-          {isTeacher ? (
-            <div style={styles.helper}>
-              Solo necesitamos tus datos básicos de adulto para crear tu cuenta.
-            </div>
-          ) : null}
-
           <div style={styles.field}>
             <label style={styles.label}>Institución (opcional)</label>
             <input
@@ -434,7 +468,7 @@ export default function RegistrationForm({ role }) {
               onChange={(e) => {
                 handleChange(e);
                 if (!e.target.value.trim()) {
-                  setForm((prev) => ({ ...prev, teacherId: "" }));
+                  setForm((prev) => ({ ...prev, teacherId: "", classroomId: "" }));
                 }
               }}
               placeholder="Nombre de la escuela (opcional)"
@@ -446,6 +480,12 @@ export default function RegistrationForm({ role }) {
             ) : null}
           </div>
 
+          {isTeacher ? (
+            <div style={styles.helper}>
+              Indica tu escuela para poder crear salones y vincular alumnos.
+            </div>
+          ) : null}
+
           {!isTeacher && hasInstitution ? (
             <div style={styles.field}>
               <label style={styles.label}>Tu profesor</label>
@@ -453,7 +493,10 @@ export default function RegistrationForm({ role }) {
                 style={styles.select}
                 name="teacherId"
                 value={form.teacherId}
-                onChange={handleChange}
+                onChange={(e) => {
+                  handleChange(e);
+                  setForm((prev) => ({ ...prev, classroomId: "" }));
+                }}
                 disabled={loadingTeachers}
                 required
               >
@@ -476,12 +519,42 @@ export default function RegistrationForm({ role }) {
             <div style={styles.helper}>
               Puedes registrarte sin escuela y usar MathBot de forma independiente.
             </div>
-          ) : (
+          ) : null}
+
+          {!isTeacher && hasInstitution && form.teacherId ? (
+            <div style={styles.field}>
+              <label style={styles.label}>Salón (opcional)</label>
+              <select
+                style={styles.select}
+                name="classroomId"
+                value={form.classroomId}
+                onChange={handleChange}
+                disabled={loadingClassrooms}
+              >
+                <option value="">
+                  {loadingClassrooms
+                    ? "Cargando salones..."
+                    : "Sin salón asignado"}
+                </option>
+                {classrooms.map((room) => (
+                  <option key={room.id} value={room.id}>
+                    {room.name}
+                    {room.grade ? ` · ${room.grade}` : ""}
+                  </option>
+                ))}
+              </select>
+              <div style={styles.helper}>
+                Puedes elegir uno de los salones de tu profesor.
+              </div>
+            </div>
+          ) : null}
+
+          {!isTeacher && hasInstitution ? null : isTeacher ? (
             <div style={styles.helper}>
               El registro de profesor solicita menos datos porque es una cuenta
               de adulto.
             </div>
-          )}
+          ) : null}
 
           <div style={styles.field}>
             <label style={styles.label}>Correo electrónico</label>

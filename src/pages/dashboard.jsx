@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ChatHeader from "../components/ChatHeader";
-import { getStoredUser, getTeacherDashboard } from "../services/authService";
-import { getAvatarById } from "../constants/avatars";
+import {
+  getStoredUser,
+  getTeacherDashboard,
+  createClassroom,
+} from "../services/authService";
 
 function formatDate(value) {
   if (!value) return "Sin actividad";
@@ -29,6 +32,10 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [data, setData] = useState(null);
+  const [selectedClassroomId, setSelectedClassroomId] = useState("all");
+  const [newClassroom, setNewClassroom] = useState({ name: "", grade: "" });
+  const [creatingClassroom, setCreatingClassroom] = useState(false);
+  const [classroomStatus, setClassroomStatus] = useState("");
 
   useEffect(() => {
     if (!currentUser?.id) {
@@ -42,38 +49,56 @@ export default function Dashboard() {
       return;
     }
 
-    let cancelled = false;
-
-    async function loadDashboard() {
-      setLoading(true);
-      setError("");
-      try {
-        const res = await getTeacherDashboard();
-        if (!cancelled) {
-          setData(res);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setError(
-            err?.message || "No se pudo cargar el dashboard del profesor.",
-          );
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    }
-
     loadDashboard();
-
-    return () => {
-      cancelled = true;
-    };
   }, [currentUser?.id, currentUser?.role, navigate]);
 
+  async function loadDashboard() {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await getTeacherDashboard();
+      setData(res);
+    } catch (err) {
+      setError(err?.message || "No se pudo cargar el dashboard del profesor.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleCreateClassroom(e) {
+    e.preventDefault();
+    if (!newClassroom.name.trim()) return;
+
+    setCreatingClassroom(true);
+    setClassroomStatus("");
+    try {
+      await createClassroom({
+        name: newClassroom.name.trim(),
+        grade: newClassroom.grade.trim() || null,
+      });
+      setNewClassroom({ name: "", grade: "" });
+      setClassroomStatus("Salón creado correctamente.");
+      await loadDashboard();
+    } catch (err) {
+      setClassroomStatus(err?.message || "No se pudo crear el salón.");
+    } finally {
+      setCreatingClassroom(false);
+    }
+  }
+
   const stats = data?.classStats;
-  const students = data?.students || [];
+  const classrooms = data?.classrooms || [];
+  const allStudents = data?.students || [];
+  const students = useMemo(() => {
+    if (selectedClassroomId === "all") return allStudents;
+    if (selectedClassroomId === "none") {
+      return allStudents.filter((s) => !s.classroomId);
+    }
+    return allStudents.filter(
+      (s) => String(s.classroomId) === String(selectedClassroomId),
+    );
+  }, [allStudents, selectedClassroomId]);
+
   const gradeDistribution = useMemo(
     () => stats?.gradeDistribution || [],
     [stats],
@@ -97,12 +122,16 @@ export default function Dashboard() {
             <p style={s.subtitle}>
               {data?.teacher?.institution ||
                 currentUser?.institution ||
-                "Tu institución"}{" "}
+                "Sin institución"}{" "}
               · {getRoleName(data?.teacher?.role || currentUser?.role)}
             </p>
           </div>
-          <button style={s.primaryBtn} onClick={() => navigate("/history")}>
-            {/* <span>{getAvatarById(student.avatar).emoji}</span> */}
+          <button
+            style={s.primaryBtn}
+            onClick={() => navigate("/history")}
+            type="button"
+          >
+            Ver historial general
           </button>
         </div>
 
@@ -132,6 +161,94 @@ export default function Dashboard() {
 
             <section style={s.panel}>
               <div style={s.panelHeader}>
+                <h2 style={s.panelTitle}>Salones</h2>
+                <span style={s.panelTag}>{classrooms.length} salones</span>
+              </div>
+
+              <form style={s.classroomForm} onSubmit={handleCreateClassroom}>
+                <input
+                  style={s.inlineInput}
+                  placeholder="Nombre del salón (ej. 6° A)"
+                  value={newClassroom.name}
+                  onChange={(e) =>
+                    setNewClassroom((prev) => ({
+                      ...prev,
+                      name: e.target.value,
+                    }))
+                  }
+                />
+                <input
+                  style={s.inlineInput}
+                  placeholder="Grado (opcional)"
+                  value={newClassroom.grade}
+                  onChange={(e) =>
+                    setNewClassroom((prev) => ({
+                      ...prev,
+                      grade: e.target.value,
+                    }))
+                  }
+                />
+                <button
+                  style={s.smallBtn}
+                  type="submit"
+                  disabled={creatingClassroom}
+                >
+                  {creatingClassroom ? "Creando..." : "Crear salón"}
+                </button>
+              </form>
+              {classroomStatus ? (
+                <p style={s.stateText}>{classroomStatus}</p>
+              ) : null}
+
+              <div style={s.classroomGrid}>
+                <button
+                  style={{
+                    ...s.classroomCard,
+                    ...(selectedClassroomId === "all" ? s.classroomCardActive : {}),
+                  }}
+                  onClick={() => setSelectedClassroomId("all")}
+                  type="button"
+                >
+                  <strong>Todos</strong>
+                  <span>{allStudents.length} alumnos</span>
+                </button>
+                <button
+                  style={{
+                    ...s.classroomCard,
+                    ...(selectedClassroomId === "none" ? s.classroomCardActive : {}),
+                  }}
+                  onClick={() => setSelectedClassroomId("none")}
+                  type="button"
+                >
+                  <strong>Sin salón</strong>
+                  <span>
+                    {allStudents.filter((st) => !st.classroomId).length} alumnos
+                  </span>
+                </button>
+                {classrooms.map((room) => (
+                  <button
+                    key={room.id}
+                    style={{
+                      ...s.classroomCard,
+                      ...(String(selectedClassroomId) === String(room.id)
+                        ? s.classroomCardActive
+                        : {}),
+                    }}
+                    onClick={() => setSelectedClassroomId(String(room.id))}
+                    type="button"
+                  >
+                    <strong>{room.name}</strong>
+                    <span>
+                      {room.studentCount ?? 0} alumnos ·{" "}
+                      {room.totalConversations ?? 0} chats
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            <section style={s.panel}>
+              <div style={s.panelHeader}>
                 <h2 style={s.panelTitle}>Distribución por grado</h2>
                 <span style={s.panelTag}>
                   {gradeDistribution.length} grados
@@ -153,7 +270,7 @@ export default function Dashboard() {
 
             <section style={s.panel}>
               <div style={s.panelHeader}>
-                <h2 style={s.panelTitle}>Alumnos registrados</h2>
+                <h2 style={s.panelTitle}>Alumnos</h2>
                 <span style={s.panelTag}>{students.length} estudiantes</span>
               </div>
               <div style={s.studentGrid}>
@@ -165,6 +282,7 @@ export default function Dashboard() {
                       onClick={() =>
                         navigate(`/history?studentId=${student.id}`)
                       }
+                      type="button"
                     >
                       <div style={s.studentTopRow}>
                         <div style={s.studentAvatar}>
@@ -178,6 +296,9 @@ export default function Dashboard() {
                           <p style={s.studentName}>{student.nombre}</p>
                           <p style={s.studentMeta}>
                             @{student.usuario} · {student.grado}
+                            {student.classroomName
+                              ? ` · ${student.classroomName}`
+                              : ""}
                           </p>
                         </div>
                       </div>
@@ -197,7 +318,7 @@ export default function Dashboard() {
                   ))
                 ) : (
                   <p style={s.stateText}>
-                    Todavía no tienes alumnos vinculados a tu cuenta.
+                    No hay alumnos en este filtro todavía.
                   </p>
                 )}
               </div>
@@ -322,6 +443,47 @@ const s = {
     borderRadius: 999,
     fontSize: 12,
     fontWeight: 800,
+  },
+  classroomForm: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr auto",
+    gap: 10,
+    marginBottom: 14,
+  },
+  inlineInput: {
+    border: "1px solid #d4c4ae",
+    borderRadius: 12,
+    padding: "10px 12px",
+    fontFamily: "'Nunito', sans-serif",
+  },
+  smallBtn: {
+    border: "none",
+    borderRadius: 12,
+    padding: "10px 14px",
+    background: "#6b3f1e",
+    color: "#fff",
+    fontWeight: 800,
+    cursor: "pointer",
+  },
+  classroomGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+    gap: 12,
+  },
+  classroomCard: {
+    border: "1px solid #ead9c7",
+    background: "#faf5ef",
+    borderRadius: 16,
+    padding: 14,
+    textAlign: "left",
+    cursor: "pointer",
+    display: "flex",
+    flexDirection: "column",
+    gap: 4,
+  },
+  classroomCardActive: {
+    border: "2px solid #6b3f1e",
+    background: "#fff9f0",
   },
   gradeGrid: {
     display: "grid",

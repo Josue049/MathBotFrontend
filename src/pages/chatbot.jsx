@@ -112,9 +112,21 @@ export default function ChatBot() {
   const photoInputRef = useRef(null);
 
   useEffect(() => {
+    if (!currentUser?.id) {
+      navigate("/login");
+      return;
+    }
+
+    if ((currentUser?.role || "").toUpperCase() === "ROLE_TEACHER") {
+      navigate("/dashboard");
+    }
+  }, [currentUser?.id, currentUser?.role, navigate]);
+
+  useEffect(() => {
     async function loadConversationFromQuery() {
       const queryConversationId = Number(searchParams.get("conversationId"));
-      const activeUserId = Number(currentUser?.id);
+      const queryStudentId = Number(searchParams.get("studentId"));
+      const activeUserId = queryStudentId || Number(currentUser?.id);
 
       if (!activeUserId || !queryConversationId) {
         return;
@@ -170,12 +182,6 @@ export default function ChatBot() {
 
     loadConversationFromQuery();
   }, [searchParams, currentUser?.id, conversationId]);
-
-  useEffect(() => {
-    if (!currentUser?.id) {
-      navigate("/login");
-    }
-  }, [currentUser?.id, navigate]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -367,7 +373,18 @@ export default function ChatBot() {
               disabled={loading || loadingConversation || uploadingImage}
               title="Subir foto de ejercicio"
             >
-              📷
+              <img
+                src="/camara.png"
+                alt="Cámara"
+                style={{
+                  width: "20px",
+                  height: "20px",
+                  objectFit: "contain",
+                  display: "block",
+                  margin: "auto",
+                  filter: "brightness(0) invert(1)",
+                }}
+              />
             </button>
             <input
               ref={photoInputRef}
@@ -393,7 +410,10 @@ export default function ChatBot() {
               className={styles.sendBtn}
               onClick={handleSend}
               disabled={
-                loading || loadingConversation || uploadingImage || !input.trim()
+                loading ||
+                loadingConversation ||
+                uploadingImage ||
+                !input.trim()
               }
             >
               <svg
@@ -413,9 +433,7 @@ export default function ChatBot() {
           </div>
         </div>
 
-        <div className={styles.panel}>
-          {/* <h1>hola</h1> */}
-        </div>
+        {/* <div className={styles.panel}></div> */}
       </div>
     </div>
   );

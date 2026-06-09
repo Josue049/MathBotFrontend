@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_BASE || 'https://mathbotbackendspringboot.onrender.com';
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8080';
 
 function storeSession(data) {
     if (typeof window === 'undefined' || !data?.token) {
@@ -136,6 +136,37 @@ export async function getTeachersByInstitution(institution) {
     return getJson(`/api/auth/teachers?institution=${encodeURIComponent(institution.trim())}`);
 }
 
+export async function getClassroomsByTeacher(teacherId) {
+    if (!teacherId) {
+        return [];
+    }
+
+    return getJson(`/api/auth/classrooms?teacherId=${encodeURIComponent(String(teacherId))}`);
+}
+
+export async function createClassroom(payload) {
+    const token = getStoredToken();
+    if (!token) {
+        throw new Error('No hay sesión activa');
+    }
+
+    const res = await fetch(`${API_BASE}/api/users/classrooms`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+        throw new Error(data?.message || `Backend error ${res.status}`);
+    }
+
+    return data;
+}
+
 export async function getTeacherDashboard() {
     return getJson('/api/users/dashboard/teacher');
 }
@@ -149,4 +180,4 @@ export function logoutUser() {
     localStorage.removeItem('mathbot_user');
 }
 
-export default { registerUser, loginUser, getStoredUser, getStoredToken, getCurrentUser, updateProfile, logoutUser, getTeachersByInstitution, getTeacherDashboard };
+export default { registerUser, loginUser, getStoredUser, getStoredToken, getCurrentUser, updateProfile, logoutUser, getTeachersByInstitution, getClassroomsByTeacher, createClassroom, getTeacherDashboard };

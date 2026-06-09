@@ -1,6 +1,6 @@
 import { getStoredToken } from './authService';
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'https://mathbotbackendspringboot.onrender.com';
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8080';
 
 export async function uploadExerciseImage({ userId, conversationId, file }) {
   const token = getStoredToken();
